@@ -10,4 +10,5 @@ RUN curl -sL https://github.com/JetBrains/kotlin/releases/download/v${KOTLIN_VER
 RUN unzip kotlin.zip
 RUN rm kotlin.zip
 ENV PATH=/kotlinc/bin:$PATH
+RUN kotlin -e '1+1'
 CMD kotlinc

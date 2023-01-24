@@ -5,7 +5,7 @@ on:
 
 jobs:
   compute-versions:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     outputs:
       kotlin-versions: ${{ steps.kotlin-versions.outputs.versions }}
       jdk-versions: ${{ steps.jdk-versions.outputs.versions }}
@@ -32,7 +32,7 @@ jobs:
       matrix:
         jdk: ${{ fromJson(needs.compute-versions.outputs.jdk-versions) }}
         kotlin: ${{ fromJson(needs.compute-versions.outputs.kotlin-versions) }}
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     concurrency:
       group: build${{ github.workflow }}${{ matrix.jdk }}-${{ matrix.kotlin }}-${{ github.event.number || github.ref }}
       cancel-in-progress: true

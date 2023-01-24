@@ -18,20 +18,20 @@ jobs:
         id: kotlin-versions
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: versions=$(./print-kotlin.versions.sh) >> $GITHUB_OUTPUT
+        run: echo "versions=$(./print-kotlin-versions.sh)" >> $GITHUB_OUTPUT
       - name: Compute Adoptium JDK versions
         id: jdk-versions
         run: >-
-          versions=$(
+          echo "versions=$(
           curl --silent https://api.adoptium.net/v3/info/available_releases | jq -c '.available_releases - .available_lts_releases + .available_lts_releases | reverse[:10]'
-          ) >> $GITHUB_OUTPUT
+          )" >> $GITHUB_OUTPUT
   build:
     needs:
       - compute-versions
     strategy:
       matrix:
-        jdk: ${{ needs.compute-versions.outputs.jdk-versions }}
-        kotlin: ${{ needs.compute-versions.outputs.kotlin-versions }}
+        jdk: ${{ fromJson(needs.compute-versions.outputs.jdk-versions) }}
+        kotlin: ${{ fromJson(needs.compute-versions.outputs.kotlin-versions) }}
     runs-on: ubuntu-20.04
     concurrency:
       group: build${{ github.workflow }}${{ matrix.jdk }}-${{ matrix.kotlin }}-${{ github.event.number || github.ref }}

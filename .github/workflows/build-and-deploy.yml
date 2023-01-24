@@ -1,0 +1,78 @@
+name: CI/CD Process
+on:
+  workflow_call:
+  workflow_dispatch:
+
+jobs:
+  compute-versions:
+    runs-on: ubuntu-20.04
+    outputs:
+      kotlin-versions: ${{ steps.kotlin-versions.outputs.versions }}
+      jdk-versions: ${{ steps.jdk-versions.outputs.versions }}
+    concurrency:
+      group: compute-versions${{ github.workflow }}${{ matrix.os }}${{ github.event.number || github.ref }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3.3.0
+      - name: Compute Kotlin versions
+        id: kotlin-versions
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: versions=$(./print-kotlin.versions.sh) >> $GITHUB_OUTPUT
+      - name: Compute Adoptium JDK versions
+        id: jdk-versions
+        run: >-
+          versions=$(
+          curl --silent https://api.adoptium.net/v3/info/available_releases | jq -c '.available_releases - .available_lts_releases + .available_lts_releases | reverse[:10]'
+          ) >> $GITHUB_OUTPUT
+  build:
+    needs:
+      - compute-versions
+    strategy:
+      matrix:
+        jdk: ${{ needs.compute-versions.outputs.jdk-versions }}
+        kotlin: ${{ needs.compute-versions.outputs.kotlin-versions }}
+    runs-on: ubuntu-20.04
+    concurrency:
+      group: build${{ github.workflow }}${{ matrix.jdk }}-${{ matrix.kotlin }}-${{ github.event.number || github.ref }}
+      cancel-in-progress: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3.3.0
+      - name: Build Image
+        run: docker build . -t danysk/kotlin:${{ matrix.kotlin }}-jdk${{ matrix.jdk }} --build-arg JDK_VERSION=${{ matrix.jdk }} --build-arg KOTLIN_VERSION=${{ matrix.kotlin }}
+      - name: Push to DockerHub
+        env:
+          DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+          DOCKER_USERNAME: danysk
+        if: >-
+          !github.event.repository.fork
+          && (
+            github.event_name != 'pull_request'
+            || github.event.pull_request.head.repo.full_name == github.repository
+          )
+        run: |
+          echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin docker.io
+          docker push danysk/kotlin:${{ matrix.kotlin }}-jdk${{ matrix.jdk }}
+  success:
+    runs-on: ubuntu-22.04
+    needs:
+      - build
+      - compute-versions
+    if: >-
+      always() && (
+        contains(join(needs.*.result, ','), 'failure')
+        || !contains(join(needs.*.result, ','), 'cancelled')
+      )
+    steps:
+      - name: Verify that there were no failures
+        run: ${{ !contains(join(needs.*.result, ','), 'failure') }}
+  # These lines are meant for renovate to trigger updates
+  # This way, we don't set up a cronjob, which GitHub actions has the abit to disable in a while
+  # requiring manuale intervention.
+  trick-updates-as-cron:
+    runs-on: ubuntu-22.04
+    container: eclipse-temurin:18
+    if: false
+    steps:
+      - uses: JetBrains/Kotlin@v1.7.10

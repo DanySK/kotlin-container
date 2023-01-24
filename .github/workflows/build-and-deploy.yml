@@ -7,8 +7,10 @@ jobs:
   compute-versions:
     runs-on: ubuntu-22.04
     outputs:
-      kotlin-versions: ${{ steps.kotlin-versions.outputs.versions }}
+      jdk-latest: ${{ steps.jdk-versions.outputs.latest }}
       jdk-versions: ${{ steps.jdk-versions.outputs.versions }}
+      kotlin-latest: ${{ fromJson(steps.kotlin-versions.outputs.latest) }}
+      kotlin-versions: ${{ steps.kotlin-versions.outputs.versions }}
     concurrency:
       group: compute-versions${{ github.workflow }}${{ matrix.os }}${{ github.event.number || github.ref }}
     steps:
@@ -18,13 +20,18 @@ jobs:
         id: kotlin-versions
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: echo "versions=$(./print-kotlin-versions.sh)" >> $GITHUB_OUTPUT
+        run: |
+          QUERY="$(./print-kotlin-versions.sh)"
+          echo "versions=$QUERY" >> $GITHUB_OUTPUT
+          echo "latest=$(echo $QUERY | jq -c 'first')" >> $GITHUB_OUTPUT
       - name: Compute Adoptium JDK versions
         id: jdk-versions
-        run: >-
+        run: |
+          QUERY="$(curl --silent https://api.adoptium.net/v3/info/available_releases)"
           echo "versions=$(
-          curl --silent https://api.adoptium.net/v3/info/available_releases | jq -c '.available_releases - .available_lts_releases + .available_lts_releases | reverse[:10]'
+          echo "$QUERY" | jq -c '.available_releases - .available_lts_releases + .available_lts_releases | reverse[:10]'
           )" >> $GITHUB_OUTPUT
+          echo "latest=$(echo "$QUERY" | jq -c '.most_recent_feature_release')" >> $GITHUB_OUTPUT
   build:
     needs:
       - compute-versions
@@ -32,6 +39,10 @@ jobs:
       matrix:
         jdk: ${{ fromJson(needs.compute-versions.outputs.jdk-versions) }}
         kotlin: ${{ fromJson(needs.compute-versions.outputs.kotlin-versions) }}
+        include:
+          - jdk: ${{ needs.compute-versions.outputs.jdk-latest }}
+            kotlin: ${{ needs.compute-versions.outputs.kotlin-latest }}
+            latest: true
     runs-on: ubuntu-22.04
     concurrency:
       group: build${{ github.workflow }}${{ matrix.jdk }}-${{ matrix.kotlin }}-${{ github.event.number || github.ref }}
@@ -41,6 +52,9 @@ jobs:
         uses: actions/checkout@v3.3.0
       - name: Build Image
         run: docker build . -t danysk/kotlin:${{ matrix.kotlin }}-jdk${{ matrix.jdk }} --build-arg JDK_VERSION=${{ matrix.jdk }} --build-arg KOTLIN_VERSION=${{ matrix.kotlin }}
+      - name: Add "latest" tag
+        if: ${{ matrix.latest }}
+        run: docker tag danysk/kotlin:${{ matrix.kotlin }}-jdk${{ matrix.jdk }} danysk/kotlin:latest
       - name: Push to DockerHub
         env:
           DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
@@ -53,7 +67,7 @@ jobs:
           )
         run: |
           echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin docker.io
-          docker push danysk/kotlin:${{ matrix.kotlin }}-jdk${{ matrix.jdk }}
+          docker push --all-tags danysk/kotlin
   success:
     runs-on: ubuntu-22.04
     needs:

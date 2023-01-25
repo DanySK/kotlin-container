@@ -41,6 +41,8 @@ jobs:
         kotlin: ${{ fromJson(needs.compute-versions.outputs.kotlin-versions) }}
         include:
           - jdk: ${{ needs.compute-versions.outputs.jdk-latest }}
+            latest-jdk: true
+          - jdk: ${{ needs.compute-versions.outputs.jdk-latest }}
             kotlin: ${{ needs.compute-versions.outputs.kotlin-latest }}
             latest: true
     runs-on: ubuntu-22.04
@@ -52,6 +54,9 @@ jobs:
         uses: actions/checkout@v3.3.0
       - name: Build Image
         run: docker build . -t danysk/kotlin:${{ matrix.kotlin }}-jdk${{ matrix.jdk }} --build-arg JDK_VERSION=${{ matrix.jdk }} --build-arg KOTLIN_VERSION=${{ matrix.kotlin }}
+      - name: Add ${{ matrix.kotlin }} tag
+        if: ${{ matrix.latest-jdk }}
+        run: docker tag danysk/kotlin:${{ matrix.kotlin }}-jdk${{ matrix.jdk }} danysk/kotlin:${{ matrix.kotlin }}
       - name: Add "latest" tag
         if: ${{ matrix.latest }}
         run: docker tag danysk/kotlin:${{ matrix.kotlin }}-jdk${{ matrix.jdk }} danysk/kotlin:latest

@@ -15,7 +15,7 @@ jobs:
       group: compute-versions${{ github.workflow }}${{ matrix.os }}${{ github.event.number || github.ref }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v3.5.0
+        uses: actions/checkout@v3.5.1
       - name: Compute Kotlin versions
         id: kotlin-versions
         env:
@@ -51,7 +51,7 @@ jobs:
       cancel-in-progress: true
     steps:
       - name: Checkout
-        uses: actions/checkout@v3.5.0
+        uses: actions/checkout@v3.5.1
       - name: Build Image
         run: docker build . -t danysk/kotlin:${{ matrix.kotlin }}-jdk${{ matrix.jdk }} --build-arg JDK_VERSION=${{ matrix.jdk }} --build-arg KOTLIN_VERSION=${{ matrix.kotlin }}
       - name: Add ${{ matrix.kotlin }} tag

@@ -5,7 +5,7 @@ on:
 
 jobs:
   compute-versions:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     outputs:
       jdk-latest: ${{ steps.jdk-versions.outputs.latest }}
       jdk-versions: ${{ steps.jdk-versions.outputs.versions }}
@@ -45,7 +45,7 @@ jobs:
           - jdk: ${{ needs.compute-versions.outputs.jdk-latest }}
             kotlin: ${{ needs.compute-versions.outputs.kotlin-latest }}
             latest: true
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     concurrency:
       group: build${{ github.workflow }}${{ matrix.jdk }}-${{ matrix.kotlin }}-${{ github.event.number || github.ref }}
       cancel-in-progress: true
@@ -74,7 +74,7 @@ jobs:
           echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin docker.io
           docker push --all-tags danysk/kotlin
   success:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     needs:
       - build
       - compute-versions
@@ -90,7 +90,7 @@ jobs:
   # This way, we don't set up a cronjob, which GitHub actions has the abit to disable in a while
   # requiring manuale intervention.
   trick-updates-as-cron:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     container: eclipse-temurin:21
     if: false
     steps:

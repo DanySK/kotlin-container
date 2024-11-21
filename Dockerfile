@@ -1,8 +1,8 @@
-ARG JDK_VERSION=21
+ARG JDK_VERSION=23
 FROM eclipse-temurin:${JDK_VERSION} AS base
 RUN apt-get update && apt-get install -y -qq --no-install-recommends --purge unzip curl
 
-ARG JDK_VERSION=21
+ARG JDK_VERSION=23
 FROM eclipse-temurin:${JDK_VERSION}
 COPY --from=base /usr/bin/unzip /usr/bin/unzip
 ARG KOTLIN_VERSION=1.8.0

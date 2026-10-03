@@ -91,7 +91,7 @@ jobs:
   # requiring manuale intervention.
   trick-updates-as-cron:
     runs-on: ubuntu-26.04
-    container: eclipse-temurin:26
+    container: eclipse-temurin:27
     if: false
     steps:
       - uses: JetBrains/Kotlin@v2.4.20

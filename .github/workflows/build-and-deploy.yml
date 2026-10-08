@@ -94,4 +94,4 @@ jobs:
     container: eclipse-temurin:27
     if: false
     steps:
-      - uses: JetBrains/Kotlin@v2.4.20
+      - uses: JetBrains/Kotlin@v2.4.21
